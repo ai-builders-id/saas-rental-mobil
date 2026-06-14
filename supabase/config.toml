@@ -1,0 +1,13 @@
+# Supabase project config (untuk Supabase CLI, opsional).
+# project_ref aktual: eikwssgmghsdakkibicr
+project_id = "saas-rental-mobil"
+
+[db]
+major_version = 16
+
+[auth]
+enable_signup = true
+# Untuk MVP/dev, verifikasi email bisa dimatikan agar test cepat.
+# Produksi: aktifkan kembali (lihat frd.md FR-01).
+[auth.email]
+enable_confirmations = false

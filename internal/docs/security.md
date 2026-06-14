@@ -1,189 +1,164 @@
 # Security Document — Aplikasi Tracking Mobil Rental
 
-## Security Architecture & Implementation Guide
+## Security Architecture & Implementation Guide — MVP Iterasi 1
 
 ---
 
 ## 1. Threat Model
 
-### Assets
-- User credentials & authentication tokens
-- Tenant business data (fleets, customers, bookings)
-- Payment data (processed by gateway, not stored)
-- Personal data (KTP, SIM, phone numbers) — regulated by UU PDP
-- GPS location data (real-time & history)
+### Assets (MVP)
+- User credentials & authentication tokens — ✅ Supabase Auth
+- Tenant business data — ✅ tenant_id isolation via Drizzle
+- Payment data — 🟡 Stub (data tersimpan di DB karena belum gateway nyata)
+- Personal data (KTP, SIM via storage) — ✅ Bucket privat + signed URL pattern
+- GPS location data — 🟡 Stub (data tiruan)
 
 ### Threat Actors
 
-| Actor | Capability | Target |
-|-------|-----------|--------|
-| Unauthenticated user | Internet access | Auth bypass, data scraping |
-| Malicious tenant | Valid credentials | Access other tenant data |
-| Disgruntled employee | Internal network access | Data exfiltration, sabotage |
-| Organized crime | Advanced persistent threat | Customer PII, financial data |
-| Competitor | Internet access | Pricing data, customer lists |
+| Actor | Mitigasi MVP |
+|-------|-------------|
+| Unauthenticated user | ✅ Auth middleware + Supabase JWT |
+| Malicious tenant | ✅ tenant_id filter di SEMUA query + RLS defense-in-depth |
+| Disgruntled employee | ✅ Role-based guard (requireRole / requireMinRole) |
+| Organized crime | 🟡 Belum (Cloudflare WAF, audit log: post-MVP) |
 
 ---
 
 ## 2. Authentication & Authorization
 
-### Password Policy
-- Minimum 8 characters, mixed case + number
-- bcrypt hashing (cost factor 12)
-- Rate limiting: 5 failed attempts → 15 min lockout
-- No password storage in plaintext anywhere
-- Session invalidation on password change
+### Password Policy ✅ (delegasi ke Supabase Auth)
+- Minimum 6 characters (Supabase default)
+- bcrypt hashing (Supabase internal)
+- Rate limiting: Supabase Auth handles brute force
+- Session invalidation on password change: ✅ Supabase
 
-### JWT Token Management
-- Access token: 15 minutes (short-lived)
-- Refresh token: 7 days (rotate on use)
-- Stored in HTTP-only, Secure, SameSite=Strict cookies
-- CSRF token for state-changing requests
-- Token revocation on logout (server-side blacklist via Redis)
+### JWT Token Management ✅ (delegasi ke Supabase Auth)
+- Access token: 1 hour (Supabase default)
+- Refresh token: Rotate on use
+- Stored in HTTP-only, Secure, SameSite cookies
+- Token revocation on logout: ✅
 
-### Multi-Tenant Isolation
-- `tenant_id` in JWT — server-verified on every request
-- RBAC enforced in server middleware
-- All queries include `WHERE tenant_id = :current_tenant`
-- RLS-ready schema design
+### Multi-Tenant Isolation ✅
+| Layer | Mekanisme |
+|-------|-----------|
+| **Application** (Drizzle) | Setiap query filter `tenant_id` dari `event.context.auth` |
+| **RLS** (Postgres) | Policy `USING (tenant_id = private.current_tenant_id())` untuk defense-in-depth |
+| **Service role** | Hanya dipakai di middleware/auth untuk ambil profil; semua endpoint bisnis pakai koneksi langsung (bypass RLS — aman karena filter manual) |
 
 ---
 
 ## 3. Data Protection
 
-### Encryption
-| Layer | Method |
-|-------|--------|
-| In transit (client → server) | TLS 1.3 (Cloudflare) |
-| In transit (server → database) | TLS (PostgreSQL) |
-| At rest (database) | Transparent Data Encryption (TDE) |
-| At rest (file storage) | AES-256 (R2 server-side encryption) |
-| PII fields (KTP, SIM, phone) | Column-level encryption (AES-256-GCM) |
-| Passwords | bcrypt |
+| Layer | Method | Status |
+|-------|--------|--------|
+| In transit (client → server) | TLS (development HTTP, production via Cloudflare) | 🟡 Dev |
+| In transit (server → database) | SSL (Supabase) | ✅ |
+| At rest (database) | Supabase TDE | ✅ |
+| At rest (file storage) | Supabase Storage encryption | ✅ |
+| PII fields (KTP, SIM) | Akses via signed URL, file di bucket privat | ✅ |
+| Passwords | bcrypt via Supabase Auth | ✅ |
 
-### Data Classification
+### Data Classification MVP
 
-| Classification | Examples | Storage |
-|---------------|----------|---------|
-| Public | Tenant name, vehicle make/model | Standard |
-| Internal | Vehicle plate numbers, pricing | Standard |
-| Confidential | Customer names, phone numbers | Encrypted |
-| Restricted | KTP photos, SIM photos | Encrypted + Access Logged |
-| Regulated | Payment data | Not stored (processed by gateway) |
+| Classification | Examples | Mitigasi |
+|---------------|----------|----------|
+| Public | Tenant name, vehicle make/model | Tidak dilindungi khusus |
+| Internal | Plate numbers, pricing | Filter tenant_id |
+| Confidential | Customer names, phone numbers | tenant_id filter + bucket privat |
+| Restricted | KTP/SIM photos | Bucket privat + signed URL (belum diimplementasi) |
+| Regulated | Payment data | Belum ada gateway nyata |
 
 ---
 
 ## 4. API Security
 
-### Request Validation
-- Zod schema validation on all API endpoints
-- Input sanitization (XSS prevention)
-- SQL injection prevention via parameterized queries
-- Content-Type enforcement (application/json)
-- Request size limits (1MB default, 10MB for file uploads)
+### Implementasi MVP
+- ✅ Zod schema validation di semua endpoint (create/update/query)
+- ✅ SQL injection prevention via Drizzle parameterized queries
+- ✅ Request validation: `readValidatedBody`, `getValidatedQuery`
+- ✅ Input sanitization — Zod trim + type enforcement
+- 🟡 Rate limiting — belum (perlu middleware)
+- 🟡 CORS — via Nuxt `routeRules: {'/api/**': { cors: true }}`
+- ❌ CSRF — Nuxt internal, perlu konfigurasi
 
-### Rate Limiting
-| Endpoint | Limit |
-|----------|-------|
-| Auth (login, register) | 5 req/min per IP |
+### Rate Limiting (target — belum implementasi)
+
+| Endpoint | Target Limit |
+|----------|-------------|
+| Auth | 5 req/min per IP |
 | API general | 60 req/min per tenant |
-| GPS data ingress | 300 req/min per device |
 | File upload | 10 req/min per tenant |
-| WhatsApp webhook | 100 req/min per IP |
-
-### CORS Configuration
-- Strict origin whitelist (no wildcard)
-- Credentials only for tenant's own domain
-- Preflight cache: 24 hours
 
 ---
 
-## 5. Infrastructure Security
+## 5. Infrastructure Security (Target Produksi)
 
-### Cloudflare VPS
-- No open ports except via Cloudflare Tunnel
-- WAF rules: SQL injection, XSS, RCE, path traversal
-- DDoS protection (automatic)
-- Bot fight mode
-- IP reputation blocking
+### Saat Ini (Dev)
+- ✅ Supabase Cloud — managed security
+- 🟡 No open ports — hanya localhost:3000
+- ❌ Docker — belum
 
-### Docker
-- Non-root user for containers
-- Read-only root filesystem where possible
-- Resource limits (CPU, memory) per container
-- Image scanning (Trivy) in CI/CD
-- Secrets via environment (never in image)
-
-### PostgreSQL
-- Separate user per service (no superuser for app)
-- Network policy: only app server can connect
-- SSL required
-- Automated backup (pg_dump) to R2
-- Backup encryption
-
-### Redis
-- Password authentication
-- Bind to localhost only
-- Keyspace notification (no sensitive data in keys)
+### Target Produksi
+- Cloudflare VPS + Tunnel: zero-trust ingress
+- WAF rules: SQL injection, XSS, RCE
+- Docker: non-root user, read-only filesystem
+- Supabase: SSL required, backup belum
 
 ---
 
 ## 6. Secure Development
 
-### CI/CD Pipeline
-- SAST scanning (SonarQube / CodeQL)
-- Dependency vulnerability scanning (Snyk / npm audit)
-- Secrets scanning (git leaks prevention)
-- Docker image vulnerability scanning (Trivy)
-- Mandatory code review for all PRs
+### MVP
+- ✅ TypeScript strict mode
+- ✅ Dependency scanning via `npm audit`
+- ✅ Separate env: `.env` (gitignored), `.env.example` (committed)
+- ✅ Service role key hanya di server (`NUXT_SUPABASE_SERVICE_KEY`)
 
-### Dependency Management
-- Regular `npm audit` & `bun update`
-- Renovate/Dependabot for automated updates
-- Pin dependency versions
-- Minimal dependency principle
+### Target
+- ❌ SAST (SonarQube / CodeQL)
+- ❌ Dependabot / Renovate
+- ❌ Code review wajib
+- ❌ Container scanning (Trivy)
 
 ---
 
-## 7. Incident Response
+## 7. Incident Response (Target — Belum)
 
-### Severity Levels
 | Level | Definition | Response Time |
-|-------|-----------|---------------|
+|-------|-----------|-------------|
 | SEV-1 | Data breach, service outage | 15 min |
-| SEV-2 | Suspicious activity, partial outage | 1 hour |
-| SEV-3 | Minor issue, non-critical | 24 hours |
-| SEV-4 | Informational | Next sprint |
-
-### Response Plan
-1. **Detect** — Monitoring alerts (Sentry, UptimeRobot, custom)
-2. **Isolate** — Revoke compromised tokens, block IP
-3. **Assess** — Determine scope & severity
-4. **Contain** — Patch vulnerability, rotate secrets
-5. **Recover** — Restore from backup if needed
-6. **Notify** — Inform affected users (within 72 hours per UU PDP)
-7. **Post-mortem** — Root cause analysis, preventive measures
+| SEV-2 | Suspicious activity | 1 hour |
+| SEV-3 | Minor issue | 24 hours |
 
 ---
 
-## 8. Compliance Checklist
+## 8. Compliance Checklist (MVP)
 
 | Requirement | Status | Notes |
 |------------|--------|-------|
-| UU PDP (Indonesia data protection) | Planned | Consent mechanism, data deletion API |
-| ISO 27001 | Not yet | Post-MVP, target year 2 |
-| PCI DSS | N/A | Payment handled by gateway |
-| WCAG 2.1 AA | Planned | Nuxt UI 4 has built-in a11y |
-| GDPR | Not yet | For EU expansion |
+| UU PDP consent | 🟡 | Checklist: `checklist.md#5-compliance--kepatuhan` |
+| ISO 27001 | ❌ | Post-MVP |
+| PCI DSS | N/A | Payment via gateway nanti |
+| WCAG 2.1 AA | 🟡 | Nuxt UI 4 built-in a11y — belum diaudit |
 
 ---
 
-## 9. Security Testing Schedule
+## 9. Security Testing (Target)
 
-| Type | Frequency | Tool/Method |
-|------|-----------|-------------|
-| Dependency scan | Weekly | Snyk / npm audit |
-| SAST | Every PR | SonarQube / CodeQL |
-| DAST | Monthly | OWASP ZAP |
-| Penetration test | Quarterly | External vendor |
-| Bug bounty | Year 2+ | HackerOne / local |
+| Type | Frequency | Status |
+|------|-----------|--------|
+| Dependency scan | Weekly | ❌ |
+| SAST | Every PR | ❌ |
+| Penetration test | Quarterly | ❌ |
+
+---
+
+## 10. Checklist Sekuritas Implementasi MVP
+
+> Checklist keamanan lengkap telah dipindahkan ke `checklist.md#43-security`.
+> Di bawah ini ringkasan status:
+
+- ✅ SQL injection prevention, input validation, auth middleware
+- ✅ Tenant isolation, RLS, role-based access
+- ✅ Service role terisolasi, storage bucket privat
+- ❌ Rate limiting, audit log, data deletion API, signed URL — belum

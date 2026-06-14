@@ -1,324 +1,224 @@
-# Wireframe — Aplikasi Tracking Mobil Rental
+# Wireframe — Aplikasi Tracking Mobil Rental (Rajawali Rentcar)
 
-## Halaman & Alur Navigasi
+## Halaman & Alur Navigasi — Implementasi Aktual
+
+**Catatan:** Wireframe di bawah mencerminkan halaman yang **sudah diimplementasikan**.
+Untuk mockup desain asli, lihat `internal/design/shots/*.png` dan `internal/design/app/*.jsx`.
 
 ---
 
-## 1. Site Map
+## 1. Site Map (Implementasi)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Landing Page                          │
-│        (Marketing / Login / Register)                    │
-└──────────────────────┬──────────────────────────────────┘
-                       │ Login/Register
-                       ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Dashboard                             │
-│    [Stats Cards] [Fleet Overview] [Active Rentals]      │
-│    [Recent Activity] [Revenue Chart] [Alerts]           │
-└──────────┬──────────┬──────────┬──────────┬─────────────┘
-           │          │          │          │
-           ▼          ▼          ▼          ▼
-     ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-     │ Fleet  │ │Booking │ │Customer│ │Branch  │
-     │ Mgmt   │ │Calendar│ │ Mgmt   │ │ Mgmt  │
-     └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘
-         │          │          │          │
-         ▼          ▼          ▼          ▼
-    ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-    │Vehicle │ │Booking │ │Customer│ │Branch  │
-    │Detail  │ │Detail  │ │Detail  │ │Detail  │
-    └────────┘ └────────┘ └────────┘ └────────┘
-
-┌──────────┬──────────┬──────────┬──────────┐
-│ Report   │ Setting  │ GPS Map  │ Staff    │
-│ Center   │          │ Live     │ Mgmt     │
-└──────────┴──────────┴──────────┴──────────┘
+/ (landing/login) → Arahkan ke /login atau /register
+    │
+    ├── /login          → Login via Supabase Auth
+    ├── /register       → Signup + Bootstrap tenant
+    │
+    └── [Authenticated]
+        ├── /dashboard      → Ringkasan fleet + booking aktif
+        ├── /fleet          → Daftar armada (tabel + filter)
+        │   └── /fleet/:id  → Detail kendaraan
+        ├── /customers      → Daftar pelanggan
+        │   └── /customers/:id → Detail + riwayat sewa
+        ├── /bookings       → Kalender booking
+        ├── /gps            → Map stub (random position)
+        ├── /reports        → Laporan (summary)
+        └── /settings       → Pengaturan tenant
 ```
 
 ---
 
-## 2. Dashboard Page
+## 2. Dashboard Page (✅ `/dashboard`)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [☰]  Dashboard                    🔔 [J. Doe ▼]       │
+│ [☰] Rajawali Rentcar      🔔 [User ▼]                   │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ │
-│  │ 🚗 Ready  │  │ 📋 Rented│  │ 🔧 Maint │  │ 💰Rev  │ │
-│  │   12      │  │    8     │  │    3     │  │Rp 45jt │ │
-│  └──────────┘  └──────────┘  └──────────┘  └────────┘ │
-│                                                         │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │ Fleet Status Overview                     [Filter ▼]│ │
-│  │ ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┐│ │
-│  │ │ B 12 │ B 45 │ B 78 │ A 11 │ A 22 │ A 33 │ C 99 ││ │
-│  │ │ 🟢   │ 🟡   │ 🔴   │ 🟢   │ 🟢   │ 🟡   │ 🟢   ││ │
-│  │ └──────┴──────┴──────┴──────┴──────┴──────┴──────┘│ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                         │
-│  ┌──────────────────────┐  ┌──────────────────────────┐ │
-│  │ Active Rentals       │  │ Revenue (This Month)      │ │
-│  │ ┌──────────────────┐ │  │     📈                    │ │
-│  │ │ B 45 — Andi      │ │  │  ▄▄▄▄▇▇▇▆▆▆▅▅▅▅▄▄▄▃▃▃   │ │
-│  │ │ Due: 14 Jun 18:00│ │  │  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓   │ │
-│  │ │ [Detail] [Extend]│ │  │  └─────────────────────── │ │
-│  │ ├──────────────────┤ │  │  Mo  Tu  We  Th  Fr  Sa  │ │
-│  │ │ A 33 — Budi      │ │  │                          │ │
-│  │ │ Due: 15 Jun 10:00│ │  │                          │ │
-│  │ │ [Detail] [Extend]│ │  │                          │ │
-│  │ └──────────────────┘ │  │                          │ │
-│  └──────────────────────┘  └──────────────────────────┘ │
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐  │
+│  │ 🚗 Ready  │  │ 📋 Rented│  │ 🔧 Maint │  │ 💰 Rev │  │
+│  │   12      │  │    8     │  │    3     │  │ Rp 45jt│  │
+│  └──────────┘  └──────────┘  └──────────┘  └────────┘  │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │ Fleet Status Overview                    [Filter ▼] │  │
+│  │ ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┐ │  │
+│  │ │ B 12 │ B 45 │ B 78 │ A 11 │ A 22 │ A 33 │ C 99 │ │  │
+│  │ │ 🟢   │ 🟡   │ 🔴   │ 🟢   │ 🟢   │ 🟡   │ 🟢   │ │  │
+│  │ └──────┴──────┴──────┴──────┴──────┴──────┴──────┘ │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐  │
+│  │ Active Rentals       │  │ Revenue (bar chart)       │  │
+│  │ ┌──────────────────┐ │  │     📈                    │  │
+│  │ │ B 45 — Andi      │ │  │  ▄▄▄▄▇▇▇▆▆▆▅▅▅▅▄▄▄▃▃▃   │  │
+│  │ │ Due: 14 Jun 18:00│ │  │  └─────────────────────── │  │
+│  │ │ [Detail] [Extend]│ │  │  Mo  Tu  We  Th  Fr  Sa  │  │
+│  │ └──────────────────┘ │  │                          │  │
+│  └──────────────────────┘  └──────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
 
+**Data:** Real-time dari `GET /api/reports/summary` + `GET /api/bookings`.
+
 ---
 
-## 3. Fleet Management Page
+## 3. Fleet Management Page (✅ `/fleet`)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [☰] Fleet Management                  [+ Add Vehicle]  │
+│ [☰] Armada                            [+ Tambah Mobil] │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
+│                                                          │
 │  ┌────────────┬─────────┬────────┬─────────┬──────────┐ │
-│  │ Search...  │ Branch ▼│Status ▼│ Sort ▼  │ [🔍]     │ │
+│  │ Cari...    │ Cabang ▼│Status ▼│ Urut ▼  │ [🔍]     │ │
 │  └────────────┴─────────┴────────┴─────────┴──────────┘ │
-│                                                         │
+│                                                          │
 │  ┌────┬──────────┬──────────┬────────┬──────┬─────────┐ │
 │  │ #  │ Vehicle  │ Plate    │ Branch │Status│ Actions │ │
 │  ├────┼──────────┼──────────┼────────┼──────┼─────────┤ │
-│  │ 1  │ Toyota   │ B 1234  │ Cabang │ 🟢   │ [👁][✏] │ │
-│  │    │ Avanza   │ XYZ     │ Jakarta│Ready │ [🗑]     │ │
+│  │ 1  │ Toyota   │ B 1234  │ Jak    │ 🟢   │ [👁][✏] │ │
+│  │    │ Avanza   │ XYZ     │        │Ready │ [🗑]     │ │
 │  ├────┼──────────┼──────────┼────────┼──────┼─────────┤ │
-│  │ 2  │ Honda    │ B 5678  │ Cabang │ 🟡   │ [👁][✏] │ │
-│  │    │ Brio     │ ABC     │ Bekasi │ Rented│ [🗑]     │ │
-│  ├────┼──────────┼──────────┼────────┼──────┼─────────┤ │
-│  │ 3  │ Daihatsu │ B 9012  │ Cabang │ 🔴   │ [👁][✏] │ │
-│  │    │ Xenia    │ DEF     │ Jakarta│ Maint │ [🗑]     │ │
+│  │ 2  │ Honda    │ B 5678  │ Bks    │ 🟡   │ [👁][✏] │ │
+│  │    │ Brio     │ ABC     │        │Rented│ [🗑]     │ │
 │  └────┴──────────┴──────────┴────────┴──────┴─────────┘ │
-│                                                         │
-│  Showing 1-3 of 23 vehicles        [< 1 2 3 ... 8 >]   │
+│                                                          │
+│  Showing 1-2 of 23                [< 1 2 3 ... 8 >]     │
 └─────────────────────────────────────────────────────────┘
 ```
 
+**Backend:** `GET /api/fleet?search=&branch_id=&status=&page=&perPage=`
+
 ---
 
-## 4. Vehicle Detail Page
+## 4. Vehicle Detail Page (✅ `/fleet/:id`)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [☰] Fleet > Toyota Avanza B 1234 XYZ                    │
+│ [☰] Armada > Toyota Avanza B 1234 XYZ                   │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────────┐  ┌──────────────────────────────┐ │
-│  │                  │  │ Toyota Avanza 2022            │ │
-│  │   [Foto Mobil]   │  │ B 1234 XYZ                   │ │
-│  │                  │  │ Cabang Jakarta                │ │
-│  └──────────────────┘  │ Status: 🟢 Available          │ │
-│                        │                              │ │
-│                        │  [Edit] [Set Maintenance]    │ │
-│                        │  [Move Branch] [Delete]      │ │
-│  ┌──────────────────┐  └──────────────────────────────┘ │
-│  │ Pricing           │                                  │
-│  │ Harian: Rp 350rb  │  ┌──────────────────────────────┐ │
-│  │ Mingguan: Rp 2jt  │  │ Rental History               │ │
-│  │ Bulanan: Rp 7jt   │  │ 14 Jun 2026 — Andi           │ │
-│  │ Dengan Sopir: +   │  │ 10 Jun 2026 — Budi           │ │
-│  │   Rp 150rb/hari   │  │ 05 Jun 2026 — Citra          │ │
-│  └──────────────────┘  │ [View All →]                  │ │
-│                        └──────────────────────────────┘ │
-│  ┌──────────────────┐  ┌──────────────────────────────┐ │
-│  │ Documents         │  │ Maintenance Schedule         │ │
-│  │ 📄 STNK (valid)   │  │ 🔧 Oil Change: 15 Jul 2026  │ │
-│  │ 📄 BPKB           │  │ 🔧 Tire Rot: 20 Aug 2026    │ │
-│  │ 📄 Insurance      │  │ 📋 Last: 10 May 2026        │ │
-│  │ [Upload]          │  │ [Add Schedule]               │ │
-│  └──────────────────┘  └──────────────────────────────┘ │
+│                                                          │
+│  ┌──────────────────┐  ┌──────────────────────────────┐  │
+│  │                  │  │ Toyota Avanza 2022            │  │
+│  │   [Foto Mobil]   │  │ B 1234 XYZ                   │  │
+│  │                  │  │ Cabang Jakarta                │  │
+│  └──────────────────┘  │ Status: 🟢 Available          │  │
+│                        │ [Set Maintenance] [Edit]      │  │
+│  ┌──────────────────┐  │ [Hapus]                       │  │
+│  │ Pricing           │  └──────────────────────────────┘  │
+│  │ Harian: Rp350rb  │  ┌──────────────────────────────┐  │
+│  │ Mingguan: Rp2jt  │  │ Riwayat Sewa                 │  │
+│  │ Bulanan: Rp7jt   │  │ 14 Jun — Andi                │  │
+│  └──────────────────┘  │ 10 Jun — Budi                │  │
+│  ┌──────────────────┐  │ [Lihat Semua →]              │  │
+│  │ Dokumen           │  └──────────────────────────────┘  │
+│  │ 📄 STNK (valid)  │  ┌──────────────────────────────┐  │
+│  │ 📄 Insurance      │  │ Jadwal Servis                │  │
+│  │ [Upload]          │  │ 🔧 Oil: 15 Jul              │  │
+│  └──────────────────┘  │ [Tambah Jadwal]              │  │
+│                        └──────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
 
+**Backend:** `GET /api/fleet/:id`, `POST /api/fleet/:id/maintenance`
+
 ---
 
-## 5. Booking Calendar Page
+## 5. Booking Calendar Page (✅ `/bookings`)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [☰] Booking Calendar                  [+ New Booking]  │
+│ [☰] Booking Calendar                  [+ Booking Baru]  │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  [< June 2026 >]                          [Filter ▼]   │
-│                                                         │
-│  ┌─────┬──────┬──────┬──────┬──────┬──────┬──────┐    │
-│  │ Sun │ Mon  │ Tue  │ Wed  │ Thu  │ Fri  │ Sat  │    │
-│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤    │
-│  │     │  1   │  2   │  3   │  4   │  5   │  6   │    │
-│  │     │      │      │      │      │      │      │    │
-│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤    │
-│  │  7  │  8   │  9   │  10  │  11  │  12  │  13  │    │
-│  │     │      │      │      │      │      │      │    │
-│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤    │
-│  │ 14  │  15  │  16  │  17  │  18  │  19  │  20  │    │
-│  │🟡 B45│🟡 A33│      │      │      │      │      │    │
-│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤    │
-│  │ 21  │  22  │  23  │  24  │  25  │  26  │  27  │    │
-│  │     │      │      │      │      │      │      │    │
-│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤    │
-│  │ 28  │  29  │  30  │      │      │      │      │    │
-│  │     │      │      │      │      │      │      │    │
-│  └─────┴──────┴──────┴──────┴──────┴──────┴──────┘    │
-│                                                         │
-│  Legend: 🟢 Available  🟡 Booked  🟠 On Rent  🔴 Maint │
+│                                                          │
+│  [< Juni 2026 >]                         [Filter ▼]     │
+│                                                          │
+│  ┌─────┬──────┬──────┬──────┬──────┬──────┬──────┐     │
+│  │ Min │ Sen  │ Sel  │ Rab  │ Kam  │ Jum  │ Sab  │     │
+│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤     │
+│  │     │  1   │  2   │  3   │  4   │  5   │  6   │     │
+│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤     │
+│  │  7  │  8   │  9   │  10  │  11  │  12  │  13  │     │
+│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤     │
+│  │ 14  │  15  │  16  │  17  │  18  │  19  │  20  │     │
+│  │🟡 B45│🟡 A33│      │      │      │      │      │     │
+│  ├─────┼──────┼──────┼──────┼──────┼──────┼──────┤     │
+│  │ 21  │  22  │  23  │  24  │  25  │  26  │  27  │     │
+│  └─────┴──────┴──────┴──────┴──────┴──────┴──────┘     │
+│                                                          │
+│  Legend: 🟢 Available  🟡 Booked  🟠 On Rent  🔴 Maint  │
 └─────────────────────────────────────────────────────────┘
 ```
 
+**Backend:** `GET /api/bookings?from=&to=&status=` — filter rentang untuk kalender
+
 ---
 
-## 6. GPS Live Map Page
+## 6. GPS Live Map Page (✅ `/gps` — stub)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [☰] GPS Live Tracking                  [Filter ▼]      │
+│ [☰] GPS Live Tracking                   [Filter ▼]      │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │                                                    │ │
-│  │                                                    │ │
-│  │              [GOOGLE MAPS VIEW]                    │ │
-│  │                                                    │ │
-│  │         🟢 B 1234 — Avanza                        │ │
-│  │         🟡 B 5678 — Brio (Di Andi)               │ │
-│  │         🟢 B 9012 — Xenia                         │ │
-│  │         🟡 A 1122 — Innova (Di Budi)              │ │
-│  │                                                    │ │
-│  │                                    🟡 B 5678       │ │
-│  │                                                    │ │
-│  │                         🟢 B 1234                  │ │
-│  │                                                    │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                         │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │ Selected: B 5678 — Honda Brio (On Rent)            │ │
-│  │ Driver: Andi                                       │ │
-│  │ Location: Jl. Sudirman No. 123, Jakarta            │ │
-│  │ Speed: 45 km/h     Last Update: 2s ago             │ │
-│  │ Duration: 3h 12m   KM Today: 48 km                 │ │
-│  │ [Geofence Alert] [History] [Notify Customer]       │ │
-│  └────────────────────────────────────────────────────┘ │
+│                                                          │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │                                                    │  │
+│  │              [GOOGLE MAPS VIEW]                    │  │
+│  │              (stub — random positions)             │  │
+│  │                                                    │  │
+│  │         🟢 B 1234 — Avanza                        │  │
+│  │         🟡 B 5678 — Brio (Di Andi)                │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  Selected: B 5678 — Honda Brio (On Rent)                │
+│  Driver: Andi           Speed: 45 km/h                  │
+│  Location: Jl. Sudirman, Jakarta                        │
+│  [Geofence Alert] [History] [Notify Customer]           │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 7. Customer Detail Page
+## 7. Customer Detail Page (✅ `/customers/:id`)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [☰] Customers > Andi Wijaya                            │
+│ [☰] Pelanggan > Andi Wijaya                             │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────────────┐  ┌──────────────────────────┐ │
-│  │  [Avatar / Initial]   │  │ Andi Wijaya              │ │
-│  │                       │  │ 📞 0812-3456-7890        │ │
-│  │                       │  │ ✉️ andi@email.com        │ │
-│  │                       │  │ 📍 Jakarta Selatan       │ │
-│  │                       │  │                          │ │
-│  │                       │  │ ⭐ Rating: 4.5 (12 sewa) │ │
-│  │                       │  │ Status: ✅ Active        │ │
-│  │                       │  │ [Edit] [Blacklist]       │ │
-│  └──────────────────────┘  └──────────────────────────┘ │
-│                                                         │
-│  ┌──────────────────────┐  ┌──────────────────────────┐ │
-│  │ Documents             │  │ Active Rental            │ │
-│  │ 📄 KTP: [View]       │  │ B 5678 — Honda Brio      │ │
-│  │ 📄 SIM: [View]       │  │ Pickup: 14 Jun 09:00     │ │
-│  │                      │  │ Return: 15 Jun 18:00     │ │
-│  │ [Upload New]         │  │ Status: 🟡 On Rent       │ │
-│  └──────────────────────┘  │ [View Detail]             │ │
-│                            └──────────────────────────┘ │
-│  ┌─────────────────────────────────────────────────────┐│
-│  │ Rental History                                      ││
-│  │ ┌──────┬──────────┬──────────┬────────┬──────────┐ ││
-│  │ │ Date │ Vehicle  │ Duration │ Total  │ Status   │ ││
-│  │ ├──────┼──────────┼──────────┼────────┼──────────┤ ││
-│  │ │10 Jun│ A 33     │ 3 days   │ Rp 1jt │ ✅ Done  │ ││
-│  │ │05 Jun│ B 45     │ 1 day    │ Rp 350k│ ✅ Done  │ ││
-│  │ │28 May│ C 99     │ 7 days   │ Rp 2jt │ ✅ Done  │ ││
-│  │ └──────┴──────────┴──────────┴────────┴──────────┘ ││
-│  └─────────────────────────────────────────────────────┘│
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐  │
+│  │  [Avatar / Initial]   │  │ Andi Wijaya              │  │
+│  │                       │  │ 📞 0812-3456-7890        │  │
+│  │                       │  │ ✉️ andi@email.com        │  │
+│  │                       │  │ 📍 Jakarta Selatan       │  │
+│  │                       │  │ ⭐ 4.5 (12 sewa)         │  │
+│  │                       │  │ [Edit] [Blacklist]       │  │
+│  └──────────────────────┘  └──────────────────────────┘  │
+│                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────────┐  │
+│  │ Dokumen               │  │ Sewa Aktif               │  │
+│  │ 📄 KTP: [Lihat]      │  │ B 5678 — Honda Brio      │  │
+│  │ 📄 SIM: [Lihat]      │  │ 14 Jun 09:00 - 15 Jun    │  │
+│  │ [Upload]             │  │ Status: 🟡 On Rent       │  │
+│  └──────────────────────┘  │ [Detail]                  │  │
+│                            └──────────────────────────┘  │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │ Riwayat Sewa                                       │  │
+│  │ ┌──────┬──────────┬──────────┬────────┬──────────┐  │  │
+│  │ │ Tgl  │ Mobil    │ Durasi   │ Total  │ Status   │  │  │
+│  │ ├──────┼──────────┼──────────┼────────┼──────────┤  │  │
+│  │ │10 Jun│ A 33     │ 3 hari   │ Rp 1jt │ ✅ Done  │  │  │
+│  │ │05 Jun│ B 45     │ 1 hari   │ Rp 350k│ ✅ Done  │  │  │
+│  │ └──────┴──────────┴──────────┴────────┴──────────┘  │  │
+│  └─────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 8. WhatsApp Chatbot Flow Wireframe
-
-```
-┌─────────────────────────────────────────┐
-│  Customer sends WA to business number   │
-├─────────────────────────────────────────┤
-│                                         │
-│  [Customer]                             │
-│  "Halo, ada Avanza?                     │
-│   Mau sewa 3 hari"                      │
-│                                         │
-│  [Bot - Instant Reply]                  │
-│  "Halo! Terima kasih sudah              │
-│   menghubungi ABC Rental.               │
-│                                         │
-│   Toyota Avanza 2022                    │
-│   ✅ Tersedia                           │
-│   💰 Rp 350.000/hari                    │
-│   💰 Rp 2.000.000/minggu                │
-│                                         │
-│   Untuk 3 hari: Rp 1.050.000            │
-│   Mau booking? (iya/tidak)"             │
-│                                         │
-│  [Customer] "Iya"                       │
-│                                         │
-│  [Bot] "Silakan isi:                    │
-│   1. Nama:                              │
-│   2. No HP:                             │
-│   3. Foto KTP (kirim foto)              │
-│   4. Tanggal ambil:                     │
-│   5. Tanggal kembali:                   │
-│   6. Alamat antar jemput? (opsional)"   │
-│                                         │
-│  [Customer sends details]               │
-│                                         │
-│  [Bot] "Terima kasih!                   │
-│   Silakan bayar DP Rp 315.000           │
-│   (30%) via link berikut:               │
-│   [Link Pembayaran]                     │
-│                                         │
-│   ⏳ Pembayaran harus selesai           │
-│   dalam 2 jam, atau booking             │
-│   otomatis dibatalkan."                 │
-│                                         │
-│  [Payment Done]                         │
-│                                         │
-│  [Bot] "✅ Pembayaran DP diterima!      │
-│   Booking Anda sudah dikonfirmasi.      │
-│                                         │
-│   📋 Detail Booking:                    │
-│   Toyota Avanza - B 1234 XYZ            │
-│   Ambil: 15 Jun 2026 09:00              │
-│   Kembali: 18 Jun 2026 18:00            │
-│   Lokasi: Jl. Raya No. 123, Jakarta     │
-│                                         │
-│   Sisa bayar: Rp 735.000                │
-│   (dibayar saat pickup)                 │
-│                                         │
-│   Ada yang bisa dibantu lagi?"          │
-│                                         │
-└─────────────────────────────────────────┘
-```
-
----
-
-## 9. Mobile Views (Responsive)
+## 8. Mobile Views (✅ Responsive, < 768px)
 
 ### Dashboard (Mobile 375px)
 ```
@@ -342,11 +242,6 @@
 │ │Due today ││
 │ │[Detail]  ││
 │ └──────────┘│
-│ ┌──────────┐│
-│ │A33 - Budi││
-│ │Due tomorw││
-│ │[Detail]  ││
-│ └──────────┘│
 │              │
 │ [Bottom Nav] │
 │ 🏠 🚗 📅 👤 │
@@ -359,3 +254,67 @@
 │  🏠 Home  🚗 Fleet  📅 Booking  👤  │
 └──────────────────────────────────────┘
 ```
+
+---
+
+## 9. Sidebar Navigation (Desktop, >= 768px)
+
+```
+┌──────┬──────────────────────────────┐
+│      │                              │
+│Logo  │        Page Content          │
+│      │                              │
+│🏠    │                              │
+│Dashboard│                          │
+│      │                              │
+│🚗    │                              │
+│Armada│                              │
+│      │                              │
+│👥    │                              │
+│Pelanggan│                          │
+│      │                              │
+│📅    │                              │
+│Booking                              │
+│      │                              │
+│🗺️    │                              │
+│GPS Live│                          │
+│      │                              │
+│📊    │                              │
+│Laporan│                            │
+│      │                              │
+│⚙️    │                              │
+│Setting│                            │
+│      │                              │
+└──────┴──────────────────────────────┘
+```
+
+Sidebar bisa di-collapse ke 72px (icon-only). Mobile: sidebar hidden + bottom nav.
+
+---
+
+## 10. Implementasi Component Tree (Frontend)
+
+```
+NuxtPage
+  ├── default.vue (layout)
+  │   ├── AppSidebar.vue       — Navigasi + brand + branch picker + subscription plan
+  │   ├── AppTopbar.vue        — Page title + user menu
+  │   ├── <slot />             — Halaman spesifik
+  │   └── MobileNav.vue        — Bottom navigation (mobile only)
+  │
+  └── auth.vue (layout)
+      └── Login / Register form
+```
+
+**Komponen Reusable:**
+- `RCard` — container card
+- `RBadge` — badge dengan warna status
+- `StatusBadge` — badge spesifik fleet status (Warna dari design.md)
+- `StatCard` — kartu ringkasan statistik
+- `Segmented` — segmented control filter
+- `Sparkline`, `BarChart`, `Donut` — chart/diagram
+- `PhotoSlot` — area foto kendaraan
+- `RAvatar` — avatar user
+- `RIcon` — icon wrapper
+- `RButton` — tombol kustom
+- `Rating` — rating pelanggan

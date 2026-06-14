@@ -1,0 +1,38 @@
+{
+  "name": "saas-rental-mobil",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Platform SaaS multi-tenant tracking & manajemen rental mobil — backend (Nuxt 4 / Nitro + Supabase)",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:seed": "node scripts/migrate.mjs --seed",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^4.8.2",
+    "@nuxtjs/supabase": "^2.0.9",
+    "@supabase/supabase-js": "^2.108.1",
+    "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.2",
+    "nuxt": "^4.4.8",
+    "postgres": "^3.4.5",
+    "vue": "^3.5.0",
+    "vue-router": "^4.4.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.21",
+    "drizzle-kit": "^0.31.10",
+    "pg": "^8.21.0",
+    "typescript": "^5.7.0",
+    "vue-tsc": "^2.1.0"
+  }
+}

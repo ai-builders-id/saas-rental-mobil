@@ -4,13 +4,14 @@
 
 Platform SaaS multi-tenant untuk bisnis rental mobil di Indonesia. Satu platform terpusat yang melayani banyak bisnis rental (tenant), masing-masing dengan data terisolasi.
 
-**Core Capabilities:**
-- Fleet tracking real-time (status: disewa/ready/maintenance)
+**Core Capabilities (MVP):**
+- Fleet management (CRUD + status: available/booked/on_rent/maintenance/inspection)
 - Multi-cabang management
-- Booking & reservation via WhatsApp chatbot
-- Payment & verification integration
-- GPS tracking integration
-- Subscription-based billing
+- Booking & reservation manual (via dashboard)
+- Customer management + blacklist
+- Payment stub (siap integrasi Midtrans nanti)
+- GPS tracking stub
+- Multi-tenant row-level isolation via Drizzle
 
 ---
 
@@ -19,17 +20,16 @@ Platform SaaS multi-tenant untuk bisnis rental mobil di Indonesia. Satu platform
 ### High-Level Architecture
 
 ```
-[Cloudflare VPS]
-    ├── Nuxt 4 (SSR) — Frontend + API Server (Nitro)
-    ├── PostgreSQL — Primary Database
-    ├── Redis — Cache + Queue + Real-time
-    └── Nginx — Reverse Proxy (Cloudflare Tunnel)
+[Nuxt 4 (SSR) — Frontend + API Server (Nitro)]
+    ├── Supabase Auth — JWT Authentication
+    ├── Supabase Postgres — Database (managed)
+    ├── Supabase Storage — File (KTP, SIM, foto mobil)
+    └── Drizzle ORM — Type-safe queries + migrations
 
-[External Services]
-    ├── Midtrans/Xendit — Payment Gateway
-    ├── WhatsApp Business API — Chatbot Booking
-    ├── GPS Provider API — Fleet Tracking
-    └── Cloudflare R2 — File Storage (KTP, SIM, foto mobil)
+[External Services (stub)]
+    ├── Midtrans/Xendit — Payment Gateway (🟡 stub)
+    ├── WhatsApp Business API — Chatbot Booking (🟡 stub)
+    └── GPS Provider API — Fleet Tracking (🟡 stub)
 ```
 
 ### Architecture Pattern
@@ -38,45 +38,34 @@ Platform SaaS multi-tenant untuk bisnis rental mobil di Indonesia. Satu platform
 
 ```
 app/
-├── components/          # Shared UI components
-│   ├── rental/          # Rental-specific components
-│   ├── fleet/           # Fleet management components
-│   ├── booking/         # Booking-related components
-│   ├── branch/          # Branch management components
-│   └── dashboard/       # Dashboard widgets
-├── composables/         # Shared composables
-├── layouts/             # App layouts
-├── middleware/          # Route middleware
-├── pages/              # File-based routes
-│   ├── dashboard/       # Owner dashboard
-│   ├── fleet/           # Fleet management
-│   ├── bookings/        # Booking management
-│   ├── branches/        # Branch management
-│   ├── customers/       # Customer management
-│   ├── reports/         # Reports & analytics
-│   └── settings/        # Tenant settings
-├── plugins/             # Vue plugins
-└── utils/               # Utility functions
+├── assets/css/main.css       # Design tokens custom (Rajawali Rentcar)
+├── components/               # 17 shared UI components
+├── composables/              # useRentalData (data fetching + state)
+├── layouts/                  # default.vue (dashboard), auth.vue (login/register)
+├── pages/                    # 13 halaman frontend
+├── app.config.ts             # Runtime config
+└── app.vue                   # Root component
 
 server/
-├── api/                 # API route handlers
-│   ├── auth/            # Authentication
-│   ├── tenants/         # Multi-tenant management
-│   ├── fleet/           # Fleet CRUD + status
-│   ├── bookings/        # Booking CRUD
-│   ├── branches/        # Branch management
-│   ├── customers/       # Customer data
-│   ├── payments/        # Payment processing
-│   ├── whatsapp/        # WhatsApp webhook
-│   ├── gps/             # GPS tracking data
-│   └── reports/         # Report generation
-├── middleware/           # Server middleware (auth, tenant resolution)
-└── plugins/             # Nitro plugins
+├── api/                      # 25 endpoint handler
+│   ├── auth/                 # bootstrap (buat tenant + profil setelah signup)
+│   ├── tenant/               # detail & update profil bisnis
+│   ├── branches/             # CRUD + transfer (POST /api/branches/:id/transfer)
+│   ├── fleet/                # CRUD + status + maintenance + documents
+│   ├── customers/            # CRUD + rentals + blacklist
+│   ├── bookings/             # CRUD + status workflow + payment
+│   ├── whatsapp/             # Webhook stub
+│   ├── gps/                  # Location stub
+│   ├── payments/             # Midtrans notify stub
+│   └── reports/              # Summary dashboard
+├── middleware/auth.ts         # Server middleware (resolve Supabase JWT → tenant_id + role)
+├── db/                       # Drizzle ORM schema + client
+└── utils/                    # Helper: errors, pagination, booking price, auth guards
 
-shared/                  # Isomorphic code
-├── types/               # TypeScript types
-├── validators/          # Zod validation schemas
-└── constants/           # Shared constants
+shared/                       # Isomorphic code (dipakai server + frontend)
+├── types/                    # TypeScript types
+├── validators/               # Zod validation schemas
+└── constants/                # Shared constants (enums, labels Indonesia, tier info)
 ```
 
 ---
@@ -88,231 +77,218 @@ shared/                  # Isomorphic code
 ```
 Tenant (Bisnis Rental)
 ├── Branches (Cabang)
-│   ├── Fleet (Armada)
-│   │   ├── Vehicles (Mobil)
-│   │   ├── GPS Devices
-│   │   └── Maintenance Records
-│   ├── Staff (Karyawan)
-│   └── Inventory
+│   ├── Vehicles (Mobil)
+│   │   ├── VehicleDocuments (STNK, BPKB, asuransi)
+│   │   └── MaintenanceRecords
+│   └── Staff (via profiles dengan role)
 ├── Customers
-│   ├── Rentals (Sewa)
-│   │   ├── Payments
-│   │   ├── Inspections
-│   │   └── Insurance Claims
-│   └── Communications (WA)
-├── Bookings
-│   ├── WhatsApp Conversations
-│   ├── Quotes
-│   ├── Payments
-│   └── Contracts
-└── Subscriptions
-    ├── Invoices
-    └── Usage Records
+│   └── Bookings
+│       └── Payments
+└── Subscriptions (via kolom di tenants)
 ```
 
 ### Key Relationships
 
 - **Tenant** has many **Branches**
 - **Branch** has many **Vehicles**
-- **Vehicle** has many **RentalRecords**
-- **Vehicle** has one **GPSDevice**
-- **Customer** has many **RentalRecords**
-- **RentalRecord** has one **Payment**
-- **RentalRecord** has one **Inspection** (check-in) and one **Inspection** (check-out)
-- **Booking** comes from **WhatsAppConversation**
-- **Booking** becomes **RentalRecord** after payment + pickup
+- **Vehicle** has many **Bookings**
+- **Vehicle** has many **MaintenanceRecords**
+- **Vehicle** has many **VehicleDocuments**
+- **Customer** has many **Bookings**
+- **Booking** has many **Payments**
+
+### Entity Details
+
+Setiap tabel memiliki kolom standar: `id uuid PK`, `tenant_id uuid FK → tenants`, `created_at`, `updated_at`.
+
+| Tabel | Kolom Kunci |
+|-------|-------------|
+| `tenants` | name, subscription_tier, subscription_status, trial_ends_at |
+| `profiles` | id = auth.users.id, tenant_id, role (owner/admin/operator/viewer) |
+| `branches` | name, address, lat/lng, operating_hours (jsonb), status |
+| `vehicles` | brand, model, year, plate_no (unik per tenant), price_daily/weekly/monthly/with_driver, status |
+| `vehicle_documents` | type (stnk/bpkb/insurance), file_url, expires_at |
+| `maintenance_records` | scheduled_at, type, cost, completed |
+| `customers` | name, phone (unik per tenant), ktp_url, sim_url, status, rating |
+| `bookings` | vehicle_id, customer_id, start_at, end_at, with_driver, price_total, dp_amount, status |
+| `payments` | booking_id, type (dp/settlement/deposit/fine/refund), amount, provider |
 
 ---
 
 ## 4. Multi-Tenant Strategy
 
-**Row-level isolation** (single database, tenant_id on every table):
+**Row-level isolation di application layer** (Drizzle query selalu filter tenant_id):
 
-```sql
--- Every tenant-scoped table has tenant_id
-CREATE TABLE vehicles (
-    id UUID PRIMARY KEY,
-    tenant_id UUID REFERENCES tenants(id),
-    branch_id UUID REFERENCES branches(id),
-    -- ... other fields
-);
-
--- Row-Level Security (RLS) via server middleware
--- All API routes resolve tenant from JWT claim
+```ts
+// Setiap query WAJIB filter tenant_id
+const [row] = await db.select().from(vehicles)
+  .where(and(eq(vehicles.id, id), eq(vehicles.tenant_id, ctx.tenantId)))
+  .limit(1)
 ```
 
+**Dua lapis keamanan:**
+1. **Drizzle / application code** — koneksi langsung sebagai DB owner (bypass RLS).
+   Setiap handler memfilter `tenant_id` dari `event.context.auth.tenantId`.
+2. **RLS (defense-in-depth)** — semua tabel punya policy `USING (tenant_id = private.current_tenant_id())`
+   untuk akses via jalur selain Drizzle (mis. Supabase client).
+
 **Tenant resolution flow:**
-1. Owner registers → tenant created + subscription tier assigned
-2. Owner logs in → JWT contains `tenant_id`
-3. Every API request → middleware extracts `tenant_id` from JWT
-4. All queries filter by `tenant_id`
+1. User signup via Supabase Auth → sesi tersimpan di JWT
+2. `POST /api/auth/bootstrap` → buat tenant baru + profil owner, trial 14 hari
+3. Setiap request berikutnya → server middleware `server/middleware/auth.ts`:
+   - Resolve user dari `serverSupabaseUser(event)`
+   - Ambil profil (tenant_id + role) dari DB via Drizzle
+   - Simpan ke `event.context.auth = { userId, tenantId, role }`
+4. Handler pakai `requireAuth(event)` → dapat `ctx.tenantId` → filter semua query
 
 ---
 
-## 5. Key Flows
+## 5. Key Flows (MVP)
 
-### Booking Flow (via WhatsApp)
-
-```
-Customer WA → Chatbot → Cek Availabilitas → Kirim Quote
-    → Customer Setuju → Minta Data + KTP → Verifikasi
-    → Kirim Link DP (30-50%) → DP Masuk → Booking Dikonfirmasi
-    → WA Notification ke Owner → Kalender Terblokir
-```
-
-### Pickup Flow
+### Booking Lifecycle
 
 ```
-Customer Datang → Verifikasi KTP/SIM → Inspeksi Mobil (foto 8 sisi)
-    → Tanda Tangan Digital → Pelunasan + Deposit → Kunci Dibuka
-    → Status: ON RENT → GPS Tracking Aktif
-```
-
-### Return Flow
-
-```
-Customer Kembali → Inspeksi Mobil (foto 8 sisi)
-    → Bandingkan dengan Foto Checkout
-    → Jika Rusak → Proses Klaim Asuransi
-    → Jika OK → Refund Deposit → Status: AVAILABLE
-    → Masuk Antrian Cuci & Servis
+POST /api/bookings → status: pending
+PATCH status → confirmed (vehicle → booked)
+PATCH status → active (vehicle → on_rent)
+PATCH status → completed (vehicle → inspection)
+PATCH status → canceled (vehicle → available bila tak ada booking lain)
 ```
 
 ### Fleet Status Lifecycle
 
 ```
-AVAILABLE → BOOKED → ON_RENT → RETURNED → INSPECTION → AVAILABLE
-                                                    → MAINTENANCE → AVAILABLE
+AVAILABLE → BOOKED → ON_RENT → INSPECTION → AVAILABLE
+                                            → MAINTENANCE → AVAILABLE
+```
+
+(Sinkronisasi otomatis via trigger `sync_vehicle_status` saat booking berubah status.)
+
+### Payment Flow (Stub)
+
+```
+POST /api/bookings/:id/payment → tersimpan di tabel payments
+(Integrasi Midtrans/Xendit nyata: post-MVP)
+```
+
+### Booking Flow (via WhatsApp) — Stub
+
+```
+POST /api/whatsapp/webhook → tercatat di log, siap integrasi nyata
 ```
 
 ---
 
-## 6. Real-Time Architecture
-
-### GPS Tracking
-- GPS devices push location data via API every 30-60 seconds
-- Server validates and stores in Redis sorted sets (latest position per vehicle)
-- Frontend subscribes via WebSocket (Nuxt built-in via Nitro)
-- Geofencing alerts when vehicle leaves designated area
-
-### WhatsApp Webhook
-- WA Business API sends incoming messages to server webhook
-- Server processes via queue (Bull/BullMQ on Redis)
-- Chatbot logic processes intents and responds
-- Human handoff when chatbot cannot resolve
-
----
-
-## 7. API Design
+## 6. API Design
 
 RESTful API under `/api/*` served by Nitro server:
 
 ```
-GET    /api/fleet                    — List vehicles
-POST   /api/fleet                    — Add vehicle
-GET    /api/fleet/:id                — Vehicle detail
-PATCH  /api/fleet/:id/status         — Update status
-POST   /api/fleet/:id/maintenance    — Schedule maintenance
+GET    /api/health                         — Health check
 
-GET    /api/bookings                 — List bookings
-POST   /api/bookings                 — Create booking
-PATCH  /api/bookings/:id/status      — Update status
-POST   /api/bookings/:id/payment     — Register payment
+POST   /api/auth/bootstrap                 — Buat tenant + profil setelah signup
+GET    /api/me                             — Profil + tenant saat ini
+GET    /api/tenant                         — Detail tenant
+PATCH  /api/tenant                         — Update profil bisnis
 
-GET    /api/customers                — List customers
-POST   /api/customers                — Register customer
-GET    /api/customers/:id/rentals    — Customer rental history
+GET    /api/branches                       — List cabang (paginasi + cari)
+POST   /api/branches                       — Tambah cabang
+GET    /api/branches/:id                   — Detail cabang
+PATCH  /api/branches/:id                   — Update cabang
+DELETE /api/branches/:id                   — Hapus cabang
 
-GET    /api/branches                 — List branches
-POST   /api/branches                 — Add branch
-POST   /api/branches/:id/transfer    — Transfer vehicle between branches
+GET    /api/fleet                          — List kendaraan (filter cabang/status + cari)
+POST   /api/fleet                          — Tambah kendaraan
+GET    /api/fleet/:id                      — Detail kendaraan
+PATCH  /api/fleet/:id                      — Update kendaraan
+DELETE /api/fleet/:id                      — Hapus kendaraan
+PATCH  /api/fleet/:id/status               — Ubah status
+POST   /api/fleet/:id/maintenance          — Jadwalkan servis
 
-POST   /api/whatsapp/webhook         — WA incoming message
-GET    /api/gps/vehicles/:id/location — Latest GPS position
+GET    /api/customers                      — List pelanggan (cari nama/phone)
+POST   /api/customers                      — Tambah pelanggan
+GET    /api/customers/:id                  — Detail pelanggan
+PATCH  /api/customers/:id                  — Update pelanggan
+GET    /api/customers/:id/rentals          — Riwayat sewa
+POST   /api/customers/:id/blacklist        — Blacklist
+
+GET    /api/bookings                       — List booking (filter status/rentang)
+POST   /api/bookings                       — Buat booking (auto-hitung harga, cek overbooking)
+GET    /api/bookings/:id                   — Detail booking
+PATCH  /api/bookings/:id                   — Update booking
+PATCH  /api/bookings/:id/status            — Ubah status (validasi transisi)
+POST   /api/bookings/:id/payment           — Catat pembayaran
+
+GET    /api/reports/summary                — Ringkasan dashboard
+POST   /api/whatsapp/webhook               — Stub WA
+POST   /api/payments/midtrans/notify       — Stub Midtrans
+POST   /api/gps/ingest                     — Stub GPS ingress
+GET    /api/gps/vehicles/:id/location      — Stub posisi kendaraan
 ```
 
 ---
 
-## 8. Security Boundaries
+## 7. Security Boundaries
 
 ```
 [Public]
-    ├── /api/auth/* — Login, Register, Verify
-    ├── /api/whatsapp/webhook — WA webhook (IP whitelist)
-    └── /api/gps/* — GPS data ingress (API key per device)
+    ├── /api/health               — Health check
+    ├── /api/auth/bootstrap        — Dipanggil setelah signup (butuh sesi, tidak butuh profil)
+    ├── /api/whatsapp/webhook      — Stub WA (tidak butuh auth)
+    ├── /api/payments/midtrans/notify — Stub payment
+    └── /api/gps/ingest            — Stub GPS
 
-[Authenticated — Owner]
-    ├── /api/fleet/* — Fleet CRUD
-    ├── /api/bookings/* — Booking management
-    ├── /api/branches/* — Branch management
-    ├── /api/customers/* — Customer management
-    ├── /api/reports/* — Reports & analytics
-    └── /api/settings/* — Tenant settings
+[Authenticated — all roles]
+    ├── /api/me                   — Profil sendiri
+    ├── /api/branches             — List cabang
+    ├── /api/fleet                — List kendaraan
+    ├── /api/customers            — List pelanggan
+    ├── /api/bookings             — List booking
+    └── /api/reports/summary      — Ringkasan dashboard
 
-[Authenticated — Staff]
-    └── Subset based on role (operator, admin, viewer)
+[Role-gated]
+    ├── admin+   → POST/PATCH/DELETE branches, fleet, customers, payments
+    ├── operator+ → PATCH fleet/:id/status, POST/PATCH bookings, PATCH bookings/:id/status
+    └── owner    → DELETE cabang, DELETE kendaraan, POST blacklist
 ```
 
 ---
 
-## 9. Data Flow Diagram
+## 8. Data Flow Diagram
 
 ```
-                  ┌─────────────┐
-                  │  WhatsApp   │
-                  │   Client    │
-                  └──────┬──────┘
-                         │ WA API
-                         ▼
-                  ┌─────────────┐
-                  │  WA BSP     │
-                  │  Webhook    │
-                  └──────┬──────┘
-                         │
-           ┌─────────────┼─────────────┐
-           ▼             ▼             ▼
-    ┌──────────┐  ┌──────────┐  ┌──────────┐
-    │ Chatbot  │  │ Payment  │  │  Owner   │
-    │ Service  │  │ Gateway  │  │ Dashboard│
-    └────┬─────┘  └────┬─────┘  └────┬─────┘
-         │              │             │
-         └──────────────┼─────────────┘
-                        ▼
-                 ┌──────────────┐
-                 │   Nitro API  │
-                 │   Server     │
-                 └──────┬───────┘
-                        │
-          ┌─────────────┼──────────────┐
-          ▼             ▼              ▼
-   ┌──────────┐  ┌──────────┐  ┌──────────┐
-   │PostgreSQL│  │  Redis   │  │   R2     │
-   │ Primary  │  │ Cache/WS │  │ Storage  │
-   └──────────┘  └──────────┘  └──────────┘
+[Browser / Frontend]
+    ↓
+[Nuxt / Nitro]
+    ├── Drizzle ORM → [Supabase Postgres]
+    ├── Supabase Auth → [JWT / Sessions]
+    └── Supabase Storage → [Files (KTP, SIM, photos)]
 ```
 
 ---
 
-## 10. Deployment Architecture (Cloudflare)
+## 9. Deployment Architecture (Saat Ini)
 
 ```
-[Cloudflare VPS]
-    ├── Docker Compose
-    │   ├── nuxt-app (Node.js 22) — SSR + API
-    │   ├── postgres:16
-    │   ├── redis:7
-    │   └── nginx (optional, if not using CF Tunnel)
-    │
-    ├── Cloudflare Tunnel (cloudflared)
-    │   ├── Public → VPS (no open ports needed)
-    │   └── DDoS protection, WAF, caching
-    │
-    └── CI/CD via GitHub Actions
-        └── Deploy on push to main branch
+[Local Dev]
+    ├── npm run dev → localhost:3000
+    └── Supabase Cloud → database + auth + storage
+
+[Target Produksi]
+    └── Cloudflare VPS + Cloudflare Tunnel (belum diimplementasikan)
 ```
 
-**Scaling strategy:**
-- Horizontal: Multiple Nuxt instances behind load balancer
-- Database: Read replicas for reporting queries
-- Cache: Redis cluster for real-time GPS data
-- File storage: Cloudflare R2 for images/documents
+---
+
+## 10. Perubahan dari Blueprint Awal
+
+| Aspek | Rencana Awal | Realita |
+|-------|-------------|---------|
+| Database | PostgreSQL self-hosted | Supabase Postgres managed |
+| Cache/Queue | Redis 7 | Belum ada (post-MVP) |
+| Storage | Cloudflare R2 | Supabase Storage |
+| ORM | Drizzle optional | Drizzle = source of truth |
+| Auth | JWT custom | Supabase Auth |
+| Deployment | Docker + CF Tunnel | Masih dev lokal |
+| Real-time | WebSocket (socket.io) | Belum ada |
+| WA Queue | BullMQ | Stub |

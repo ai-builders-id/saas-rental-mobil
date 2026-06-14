@@ -6,59 +6,47 @@
 
 | Technology | Version | Purpose |
 |-----------|---------|---------|
-| **Nuxt** | 4.x (latest) | SSR/SSG framework, file-based routing, auto-imports |
-| **Vue** | 3.x | UI framework (bundled with Nuxt) |
-| **Nuxt UI** | 4.8+ | Component library (125+ components, MIT) |
+| **Nuxt** | 4.4.8 | SSR/SSG framework, file-based routing, auto-imports |
+| **Vue** | 3.5.x | UI framework (bundled with Nuxt) |
+| **Nuxt UI** | 4.8.2 | Component library (125+ components, MIT) |
 | **Tailwind CSS** | v4 | Utility-first CSS, `@theme` directive |
-| **TypeScript** | 5.x | Type safety |
+| **TypeScript** | 5.7 | Type safety |
 | **VueUse** | latest | Composables library |
-| **Zod** | latest | Runtime validation (shared with server) |
+| **Zod** | 4.4.3 | Runtime validation (shared with server) |
 
 ### Nuxt 4 Configuration
 
 ```ts
 // nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', '@nuxtjs/supabase'],
   compatibilityVersion: 4,
-
-  nitro: {
-    preset: 'cloudflare',  // Cloudflare Workers deployment
-  },
-
-  routeRules: {
-    '/': { prerender: true },
-    '/dashboard/**': { ssr: false },
-    '/api/**': { cors: true },
-  },
-
   css: ['~/assets/css/main.css'],
+  routeRules: { '/api/**': { cors: true } },
 })
 ```
 
 ### Directory Structure
 ```
 app/
-├── assets/css/main.css       # Tailwind + Nuxt UI + design tokens
-├── components/               # Auto-imported Vue components
-├── composables/              # Auto-imported composables
-├── layouts/                  # App layouts
-├── pages/                    # File-based routes
-├── plugins/                  # Vue plugins
-├── utils/                    # Utility functions
-├── app.config.ts             # Runtime config (theme, UI)
+├── assets/css/main.css       # Tailwind + Nuxt UI + design tokens (Rajawali Rentcar)
+├── components/               # 17 custom komponen (AppSidebar, AppTopbar, StatCard, RBadge, …)
+├── composables/              # useRentalData (data + state management)
+├── layouts/                  # default.vue (dashboard), auth.vue (login/register)
+├── pages/                    # 13 halaman (dashboard, fleet, customers, bookings, gps, reports, settings, login, register)
+├── app.config.ts             # Runtime config
 └── app.vue                   # Root component
 
 server/
-├── api/                      # API route handlers
-├── middleware/                # Server middleware
-├── plugins/                  # Nitro plugins
-└── utils/                    # Server-side utilities
+├── api/                      # 25 endpoint handler (5 domain: auth, branches, fleet, customers, bookings + stubs)
+├── middleware/auth.ts        # Auth middleware (resolve Supabase JWT → event.context)
+├── db/                       # Drizzle ORM: schema.ts + client singleton (postgres.js)
+└── utils/                    # errors, pagination, booking, repo, auth guards
 
 shared/
-├── types/                    # TypeScript types
-├── validators/               # Zod schemas
-└── constants/                # Shared constants
+├── types/                    # TypeScript types (selaras DB snake_case)
+├── validators/               # Zod schemas per resource
+└── constants/                # Enums + labels/colors Indonesia
 ```
 
 ---
@@ -68,66 +56,42 @@ shared/
 | Technology | Purpose |
 |-----------|---------|
 | **Nitro** (Nuxt 4 built-in) | Server engine — handles API routes, middleware, SSR |
-| **PostgreSQL** 16 | Primary database |
-| **Redis** 7 | Caching, session store, queue, real-time pub/sub |
+| **Supabase** (Auth + Postgres + Storage) | Authentication, database hosting, file storage |
 | **Drizzle ORM** | TypeScript-first SQL ORM (type-safe, lightweight) |
+| **postgres.js** | Driver koneksi langsung ke Postgres |
 
-> **Why Nitro over separate backend?** Nuxt 4's Nitro server provides:
-> - Unified deployment (one app to deploy)
-> - Shared TypeScript types between frontend and API
-> - Auto-imported server utilities
-> - Native WebSocket support
-> - Multiple deployment presets (Cloudflare, Node, etc.)
+> **Penyimpangan dari rancangan awal:**
+> - ~~Drizzle sebagai ORM saja~~ → ✅ Drizzle sebagai **source of truth** schema + query builder
+> - ~~Redis 7~~ → ❌ Belum diimplementasikan (post-MVP)
+> - ~~PostgreSQL self-hosted~~ → ✅ Supabase Postgres managed
+> - ~~JWT custom~~ → ✅ Supabase Auth (JWT via `@nuxtjs/supabase`)
+> - ~~Redis queue (BullMQ)~~ → ❌ Belum diimplementasikan (post-MVP)
 
 ---
 
 ## 3. External Services
 
-| Service | Purpose | Integration |
-|---------|---------|-------------|
-| **Midtrans** | Payment gateway (QRIS, VA, e-wallet, CC) | Server API + Snap redirect |
-| **Xendit** | Backup payment gateway | Server API |
-| **WhatsApp Business API** | Chatbot, notifications | Webhook + API (via BSP) |
-| **GPS Provider API** | Real-time vehicle tracking | REST API (polling every 30s) |
-| **Cloudflare R2** | File storage (KTP, SIM, photos) | S3-compatible API |
-| **Sentry** | Error tracking & monitoring | SDK |
-| **Google Maps** | Map display, geocoding | JavaScript API |
+| Service | Purpose | Status |
+|---------|---------|--------|
+| **Midtrans** | Payment gateway (QRIS, VA, e-wallet, CC) | 🟡 Stub |
+| **Xendit** | Backup payment gateway | ❌ Belum |
+| **WhatsApp Business API** | Chatbot, notifications | 🟡 Stub |
+| **GPS Provider API** | Real-time vehicle tracking | 🟡 Stub |
+| **Supabase Storage** | File storage (KTP, SIM, photos) | ✅ Siap (bucket + RLS) |
+| **Sentry** | Error tracking & monitoring | ❌ Belum |
+| **Google Maps** | Map display, geocoding | ❌ Belum |
 
 ---
 
 ## 4. DevOps & Infrastructure
 
-| Tool | Purpose |
-|------|---------|
-| **Cloudflare VPS** | Hosting |
-| **Cloudflare Tunnel** | Secure ingress (no open ports) |
-| **Docker** | Containerization |
-| **Docker Compose** | Multi-container orchestration |
-| **GitHub Actions** | CI/CD |
-| **GitHub** | Version control |
-
-### Docker Compose Production Setup
-```yaml
-services:
-  app:
-    build: .
-    env_file: .env
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  db:
-    image: postgres:16-alpine
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-
-volumes:
-  pgdata:
-```
+| Tool | Purpose | Status |
+|------|---------|--------|
+| **Supabase Cloud** | Database hosting + Auth + Storage | ✅ Used |
+| **Cloudflare VPS** | Hosting | ❌ Belum |
+| **Cloudflare Tunnel** | Secure ingress | ❌ Belum |
+| **Docker** | Containerization | ❌ Belum |
+| **GitHub Actions** | CI/CD | ❌ Belum |
 
 ---
 
@@ -135,40 +99,39 @@ volumes:
 
 | Tool | Purpose |
 |------|---------|
-| **Bun** | JavaScript runtime & package manager |
+| **Node.js** v24.14.1 | JavaScript runtime (npm, bukan bun) |
 | **VS Code** | Primary editor |
 | **Vue DevTools** | Vue/Nuxt debugging |
-| **PgAdmin** | Database management |
-| **Redis Insight** | Redis management |
+| **Postgres / Supabase Studio** | Database management |
 
 ---
 
 ## 6. Key Libraries
 
-| Package | Purpose |
-|---------|---------|
-| `@nuxt/ui` | UI components + design system |
-| `@nuxtjs/color-mode` | Dark/light mode |
-| `nuxt-icon` | Icon system (auto-imported) |
-| `drizzle-orm` | Database ORM |
-| `drizzle-kit` | Migration tool |
-| `zod` | Schema validation (shared) |
-| `@vueuse/core` | Vue composables collection |
-| `bullmq` | Job queue (Redis-based) |
-| `socket.io` / `@vueuse/integrations` | WebSocket real-time |
-| `midtrans-client` | Payment gateway |
-| `date-fns` | Date manipulation |
+| Package | Purpose | Tercatat? |
+|---------|---------|-----------|
+| `@nuxt/ui` 4.8.2 | UI components + design system | ✅ |
+| `@nuxtjs/supabase` 2.0.9 | Supabase Auth + client integration | ✅ |
+| `drizzle-orm` 0.45.2 | Database ORM | ✅ |
+| `drizzle-kit` 0.31.10 | Migration tool | ✅ |
+| `zod` 4.4.3 | Schema validation (shared) | ✅ |
+| `postgres` 3.4.5 | Database driver | ✅ (baru) |
+| `date-fns` 4.4.0 | Date manipulation | ✅ |
+| `@vueuse/core` | Belum dipasang | ❌ (post-MVP) |
+| `midtrans-client` | Belum dipasang | ❌ (post-MVP) |
+| `socket.io` | Belum dipasang | ❌ (post-MVP) |
+| `bullmq` | Belum dipasang | ❌ (post-MVP) |
 
 ---
 
-## 7. Why These Choices?
+## 7. Perubahan dari Rencana Awal
 
-| Decision | Rationale |
-|----------|-----------|
-| **Nuxt 4** | SSR for SEO, file-based routing, Nitro unified backend, Cloudflare preset |
-| **Nuxt UI 4** | 125+ components, MIT open source, design tokens, dark mode, Tailwind v4 |
-| **Drizzle ORM** | Type-safe, lightweight, SQL-like syntax, great DX with migrations |
-| **PostgreSQL** | Reliable, feature-rich, JSON support, great for transactional data |
-| **Redis** | Speed for real-time GPS, session store, job queue, pub/sub |
-| **Cloudflare Tunnel** | Zero-trust ingress, no open ports, DDoS protection, WAF |
-| **Midtrans** | Dominant payment gateway in Indonesia, comprehensive method support |
+| Keputusan | Rencana Awal | Realita | Alasan |
+|-----------|-------------|---------|--------|
+| **ORM** | Drizzle hanya query builder | Drizzle = source of truth schema | User minta ORM penuh |
+| **Auth** | JWT custom + bcrypt | Supabase Auth (JWT via `@nuxtjs/supabase`) | User beri kredensial Supabase |
+| **Database** | PostgreSQL 16 self-hosted | Supabase Postgres managed | Instruksi user |
+| **Storage** | Cloudflare R2 + S3 API | Supabase Storage | Sederhana untuk MVP |
+| **Runtime** | Bun | npm (Node.js) | Bun tidak terpasang |
+| **Caching** | Redis 7 | Belum ada | Post-MVP |
+| **WA Queue** | BullMQ | Stub | Post-MVP |

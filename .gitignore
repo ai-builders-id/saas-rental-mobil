@@ -2,7 +2,18 @@ node_modules/
 vendor/
 .env
 .env.local
+.env.*
+!.env.example
 .DS_Store
 *.log
+
+# Nuxt / Nitro
+.nuxt/
+.output/
+.data/
 dist/
 .build/
+
+# Supabase CLI local
+supabase/.branches/
+supabase/.temp/

@@ -2,6 +2,8 @@
 
 ## Aplikasi Tracking Mobil Rental — SaaS Platform
 
+**Status Implementasi: MVP Iterasi 1 ✅**
+
 ---
 
 ## 1. Ringkasan Bisnis
@@ -12,11 +14,11 @@ Platform SaaS yang menyediakan sistem manajemen armada, booking, pembayaran, dan
 
 **Misi:** Mentransformasi bisnis rental mobil Indonesia dari operasi manual ke digital terintegrasi.
 
+**Status Sekarang:** MVP backend + frontend selesai. Integrasi WA, payment gateway, GPS: masih stub.
+
 ---
 
 ## 2. Analisis Pasar
-
-### 2.1 Ukuran Pasar
 
 | Metrik | Nilai |
 |--------|-------|
@@ -24,37 +26,19 @@ Platform SaaS yang menyediakan sistem manajemen armada, booking, pembayaran, dan
 | Growth rate (CAGR) | 16% |
 | Proyeksi 2031 | ~USD 2.1 miliar |
 | Jumlah bisnis rental (estimasi) | 15.000 - 25.000 |
-| Mayoritas | UMKM (2-50 unit) |
 
-### 2.2 Tren Pasar 2026
-- Adopsi GPS tracker sudah menjadi standar industri
-- WhatsApp sebagai kanal komunikasi utama (95%+ bisnis)
-- Multi-cabang semakin umum seiring ekspansi bisnis
-- Pembayaran digital (QRIS, VA) sudah dominan
-- Regulasi asuransi kendaraan mulai diwajibkan
-
-### 2.3 Kompetitor
-
-| Software | Kelebihan | Kekurangan |
-|----------|-----------|------------|
-| MyRental.id | Booking, WA integrasi, multi-cabang | UI kurang modern, harga tinggi |
-| ScaleOcean | ERP lengkap | Terlalu kompleks untuk UMKM |
-| INVLY.ID | POS, multi-cabang | Fokus retail, kurang untuk rental |
-| Rentra | Sederhana, Android app | Fitur terbatas, tidak ada multi-cabang |
-| SevenRent | All-in-one | Closed system, no API |
-
-### 2.4 Diferensiasi Kami
-- **WA Chatbot native** — bukan hanya notifikasi, tapi full booking flow
-- **UI modern** — Nuxt UI 4, mobile-first, dark mode
+### Diferensiasi Kami (MVP)
+- **UI modern** — Nuxt UI 4, mobile-first, dark mode, desain kustom "Rajawali Rentcar"
 - **Multi-cabang real-time** — satu dashboard semua cabang
 - **Harga terjangkau** — mulai Rp 150-300rb/bulan
-- **Cloudflare deployment** — latency rendah untuk Indonesia
+- **ORM + Type-safe** — Drizzle ORM, Zod validation di semua input
+- 📌 WA Chatbot, GPS Tracking: **post-MVP**
 
 ---
 
 ## 3. Model Bisnis
 
-### 3.1 Pricing Tiers
+### Pricing Tiers (siap digunakan, auto-billing: post-MVP)
 
 | Tier | Harga | Kapasitas | Fitur |
 |------|-------|-----------|-------|
@@ -62,104 +46,76 @@ Platform SaaS yang menyediakan sistem manajemen armada, booking, pembayaran, dan
 | **Pro** | Rp 350.000/bulan | 3 cabang, 50 unit | + GPS tracking, payment gateway, laporan |
 | **Enterprise** | Rp 750.000/bulan | Unlimited cabang | + API akses, dedicated support, white-label |
 
-**Trial:** 14 hari gratis tier Pro (tanpa kartu kredit).
+**Trial:** 14 hari gratis tier Pro (✅ di-set saat bootstrap).
 
-### 3.2 Revenue Streams
-- Subscription bulanan/tahunan (disk 15% untuk tahunan)
-- Fee transaksi opsional (1% per booking) untuk tier Starter
-- Setup fee untuk custom integration (opsional)
-- Hardware partnership (GPS device reseller)
-
-### 3.3 Biaya Operasional (Estimasi Bulanan)
-
-| Item | Biaya |
-|------|-------|
-| VPS Cloudflare | ~$20-50 |
-| PostgreSQL (managed) | ~$30-100 |
-| Redis | ~$15-30 |
-| WA Business API | ~$0.005/pesan |
-| Payment Gateway | 0-2% per transaksi |
-| Cloudflare R2 | ~$5/100GB |
-| Total (100 tenant) | ~$100-200/bulan |
+### Revenue Streams
+- Subscription bulanan/tahunan → 🟡 Auto-billing belum aktif
+- Fee transaksi opsional (1% per booking) → 🟡 Belum
+- Setup fee → 🟡 Belum
 
 ---
 
 ## 4. Customer Segments
 
-### Segment A: Rental Mobil Perorangan (2-10 unit)
-- **Karakteristik:** Owner merangkap operator, 1 cabang, modal terbatas
-- **Kebutuhan:** Yang penting ada sistem, harga murah, mudah dipakai
-- **Tier cocok:** Starter
-- **Estimasi jumlah:** 60% pasar
-
-### Segment B: Rental Mobil Berkembang (10-50 unit)
-- **Karakteristik:** Punya 2-3 cabang, ada staff, mulai serius
-- **Kebutuhan:** WA otomatis, GPS tracking, laporan keuangan
-- **Tier cocok:** Pro
-- **Estimasi jumlah:** 30% pasar
-
-### Segment C: Rental Mobil Besar (50+ unit)
-- **Karakteristik:** Multi-cabang, tim IT internal
-- **Kebutuhan:** API, kustomisasi, dedicated infra
-- **Tier cocok:** Enterprise
-- **Estimasi jumlah:** 10% pasar
+| Segmen | % Pasar | Kebutuhan MVP |
+|--------|---------|---------------|
+| **Segment A** — Perorangan (2-10 unit) | 60% | ✅ Sistem mudah, harga murah, dashboard HP |
+| **Segment B** — Berkembang (10-50 unit) | 30% | ✅ Multi-cabang, report, role staff |
+| **Segment C** — Besar (50+ unit) | 10% | 🟡 API akses, kustomisasi (post-MVP) |
 
 ---
 
 ## 5. Go-to-Market Strategy
 
-### Phase 1: Launch (Bulan 1-3)
-- **Target:** Rental kecil (Segment A) di Jabodetabek
-- **Channel:** Komunitas WhatsApp rental mobil, Google Ads (keyword: "software rental mobil")
-- **Promo:** Gratis 3 bulan untuk 50 tenant pertama
-- **Pendekatan:** Direct sales via WA ke owner rental
-
-### Phase 2: Growth (Bulan 4-12)
-- **Target:** Segment B + C, nasional
-- **Channel:** Instagram/FB ads, referral program (gratis 1 bulan per referral), content marketing
-- **Partnership:** Integrasi dengan GPS provider, lobi asosiasi rental (APRINDO)
-- **Event:** Pameran otomotif lokal
-
-### Phase 3: Scale (Tahun 2+)
-- **Target:** Asia Tenggara
-- **Channel:** Partnership with WA BSP, marketplace integration
-- **Product:** Mobile app, multi-language
+| Phase | Aktivitas | Timeline | Status |
+|-------|-----------|----------|--------|
+| **Launch** — Target Segment A Jabodetabek | Komunitas WA rental mobil, Google Ads | Bulan 1-3 | 🟡 Menunggu rilis |
+| **Growth** — Target Segment B+C nasional | Instagram/FB ads, referral program | Bulan 4-12 | ❌ Belum |
+| **Scale** — Asia Tenggara | Partnership WA BSP, marketplace | Tahun 2+ | ❌ Belum |
 
 ---
 
 ## 6. Key Business Metrics
 
-| Metrik | Cara Ukur | Target |
-|--------|-----------|--------|
-| MRR (Monthly Recurring Revenue) | Total subscription per bulan | Rp 50jt di bulan 12 |
-| ARPU (Average Revenue Per User) | MRR / total tenant | Rp 250rb |
-| CAC (Customer Acquisition Cost) | Total marketing / new tenant | < Rp 100rb |
-| LTV (Lifetime Value) | ARPU × avg months retained | Rp 3jt+ |
-| LTV:CAC Ratio | LTV / CAC | 30:1 |
-| Churn Rate | Tenant lost / total tenant | <5% bulanan |
-| Time to Value (TTV) | Registrasi → booking pertama | < 7 hari |
+| Metrik | Target | Status |
+|--------|--------|--------|
+| MRR | Rp 50jt di bulan 12 | 🔴 Belum diukur |
+| ARPU | Rp 250rb | 🔴 Belum diukur |
+| CAC | < Rp 100rb | 🔴 Belum diukur |
+| LTV:CAC | 30:1 | 🔴 Belum diukur |
+| Churn Rate | <5% bulanan | 🔴 Belum diukur |
+| TTV | < 7 hari | 🔴 Belum diukur |
 
 ---
 
-## 7. Regulatory & Compliance
+## 7. Biaya Operasional (Estimasi Bulanan MVP)
 
-| Aspek | Kebutuhan |
-|-------|-----------|
-| **Perlindungan Data Pribadi (UU PDP)** | Wajib — implementasi consent, data encryption, data deletion on request |
-| **Pajak** | Laporan PPh Final (UMKM), PPN untuk korporasi. Integrasi output pajak. |
-| **KBLI** | Tenant harus punya NIB dengan KBLI 77100 (sewa mobil lepas kunci) dan/atau 49221 (dengan sopir) |
-| **Asuransi** | Platform perlu fitur tracking polis asuransi kendaraan per unit |
-| **Syarat & Ketentuan** | Perjanjian sewa digital yang sah secara hukum |
+| Item | Biaya |
+|------|-------|
+| Supabase Pro (database + auth + storage) | ~$25/bulan |
+| VPS Cloudflare | ~$5-10/bulan (saat deploy) |
+| Total (MVP) | ~$30-35/bulan |
 
 ---
 
-## 8. Risk Analysis
+## 8. Regulasi & Compliance
 
-| Risiko | Probabilitas | Dampak | Mitigasi |
-|--------|-------------|--------|----------|
-| WA API blocked/delay | Medium | Tinggi | Fallback ke WA manual, multi-BSP |
-| Competitor copy feature | Tinggi | Rendah | Fokus pada eksekusi & customer service |
-| Churn tinggi | Medium | Tinggi | Onboarding yang baik, customer success |
-| GPS device compatibility | Medium | Sedang | Abstract layer untuk multi-provider |
-| Regulasi berubah | Rendah | Medium | Arsitektur fleksibel, update cepat |
-| Security breach | Rendah | Sangat Tinggi | Audit rutin, encryption, Cloudflare WAF |
+| Aspek | Status |
+|-------|--------|
+| UU PDP — consent, data deletion | 🟡 Belum (data KTP/SIM terenkripsi di storage privat) |
+| Pajak — PPh Final, PPN | 🟡 Belum |
+| Asuransi kendaraan | 🟡 Tracking dokumen siap |
+| Syarat & Ketentuan digital | 🟡 Belum |
+| KBLI 77100 / 49221 | 🟡 Belum |
+
+---
+
+## 9. Risk Analysis
+
+| Risiko | Prob. | Dampak | Mitigasi | Status |
+|--------|-------|--------|----------|--------|
+| WA API blocked/delay | Medium | Tinggi | Fallback WA manual, multi-BSP | 🟡 Post-MVP |
+| Competitor copy feature | Tinggi | Rendah | Fokus eksekusi & customer service | ✅ Aware |
+| Churn tinggi | Medium | Tinggi | Onboarding baik, customer success | ❌ Belum |
+| GPS device compatibility | Medium | Sedang | Abstract layer multi-provider | 🟡 Post-MVP |
+| Security breach | Rendah | Sangat Tinggi | RLS, service-role terisolasi, Zod validasi | ✅ Layer 1 |
