@@ -278,39 +278,23 @@ function formatRelativeDate(dateStr: string): string {
   return `${Math.floor(days / 30)} bulan lalu`
 }
 
-function isUnauthorized(err: any): boolean {
-  if (!err) return false
-  const msg = String(err?.message || err).toLowerCase()
-  return msg.includes('401') || msg.includes('tidak terautentikasi') || msg.includes('unauthorized')
-}
-
 // ── Composable ────────────────────────────────────────────────
 export function useRentalData() {
 
   async function fetchDashboard() {
     try {
-      const data = await $fetch('/api/dashboard', { credentials: 'include' })
+      const data = await $fetch('/api/dashboard')
       if (data && typeof data === 'object' && 'summary' in data) {
-        const d = data as {
-          summary: FleetSummary
-          revenue14: RevenuePoint[]
-          alerts: AlertItem[]
-          activeRentals: ActiveRental[]
-          fleetMix: FleetMixSlice[]
-          activity: ActivityItem[]
-        }
+        const d = data as any
         summary.value = d.summary
-        revenue14.value = d.revenue14
-        alerts.value = d.alerts
-        activeRentals.value = d.activeRentals
-        fleetMix.value = d.fleetMix
-        activity.value = d.activity
+        revenue14.value = d.revenue14 || []
+        alerts.value = d.alerts || []
+        activeRentals.value = d.activeRentals || []
+        fleetMix.value = d.fleetMix || []
+        activity.value = d.activity || []
         return
       }
-    } catch (e: any) {
-      if (!isUnauthorized(e)) console.warn('Dashboard API error:', e.message)
-    }
-    // Fallback dummy
+    } catch (_) { /* fallback ke dummy */ }
     summary.value = DUMMY_SUMMARY
     revenue14.value = DUMMY_REVENUE14
     alerts.value = DUMMY_ALERTS
@@ -321,7 +305,7 @@ export function useRentalData() {
 
   async function fetchBranches() {
     try {
-      const data = await $fetch('/api/branches', { query: { perPage: 50 }, credentials: 'include' })
+      const data = await $fetch('/api/branches', { query: { perPage: 50 } })
       if (data && typeof data === 'object' && 'data' in data) {
         const raw = (data as { data: Array<{ id: string; name: string }> }).data
         branches.value = raw.map((b) => ({
@@ -331,40 +315,33 @@ export function useRentalData() {
         }))
         return
       }
-    } catch { /* fallback */ }
+    } catch (_) { /* fallback */ }
     branches.value = DUMMY_BRANCHES
   }
 
   async function fetchFleet() {
     try {
-      const data = await $fetch('/api/fleet', { query: { perPage: 100 }, credentials: 'include' })
+      const data = await $fetch('/api/fleet', { query: { perPage: 100 } })
       if (data && typeof data === 'object' && 'data' in data) {
-        const raw = (data as { data: Array<{
-          id: string; brand: string; model: string; year: number
-          plate_no: string; color: string | null; branch_name: string
-          price_daily: number; odometer: number; status: string
-        }> }).data
-        vehicles.value = raw.map((v) => ({
+        const raw = (data as { data: Array<any> }).data
+        vehicles.value = raw.map((v: any) => ({
           id: v.id, merk: v.brand, model: v.model, year: v.year,
-          plate: v.plate_no, color: v.color ?? '-', branch: v.branch_name,
-          status: v.status.toUpperCase() as FleetStatusId,
-          day: Number(v.price_daily), odo: v.odometer, driver: null,
+          plate: v.plate_no, color: v.color ?? '-', branch: v.branch_name || '',
+          status: (v.status || 'AVAILABLE').toUpperCase() as FleetStatusId,
+          day: Number(v.price_daily) || 0, odo: v.odometer || 0, driver: null,
         }))
         return
       }
-    } catch { /* fallback */ }
+    } catch (_) { /* fallback */ }
     vehicles.value = DUMMY_VEHICLES
   }
 
   async function fetchCustomers() {
     try {
-      const data = await $fetch('/api/customers', { query: { perPage: 50 }, credentials: 'include' })
+      const data = await $fetch('/api/customers', { query: { perPage: 50 } })
       if (data && typeof data === 'object' && 'data' in data) {
-        const raw = (data as { data: Array<{
-          id: string; name: string; phone: string; address: string | null
-          status: string; rating: string | null; created_at: string
-        }> }).data
-        customers.value = raw.map((c) => ({
+        const raw = (data as { data: Array<any> }).data
+        customers.value = raw.map((c: any) => ({
           id: c.id, name: c.name, phone: c.phone,
           city: c.address ?? '-', rating: c.rating ? Number(c.rating) : 0,
           rentals: 0,
@@ -373,13 +350,13 @@ export function useRentalData() {
         }))
         return
       }
-    } catch { /* fallback */ }
+    } catch (_) { /* fallback */ }
     customers.value = DUMMY_CUSTOMERS
   }
 
   async function fetchGps() {
     try {
-      const data = await $fetch('/api/gps/vehicles', { credentials: 'include' })
+      const data = await $fetch('/api/gps/vehicles')
       if (Array.isArray(data)) {
         gpsUnits.value = data.map((g: any) => ({
           id: g.id, plate: g.plate, vehicle: g.vehicle,
@@ -389,7 +366,7 @@ export function useRentalData() {
         }))
         return
       }
-    } catch { /* fallback */ }
+    } catch (_) { /* fallback */ }
     gpsUnits.value = DUMMY_GPS
   }
 
@@ -397,13 +374,17 @@ export function useRentalData() {
     loading.value = true
     error.value = null
     fetched.value = true
-    await Promise.all([
-      fetchDashboard(),
-      fetchBranches(),
-      fetchFleet(),
-      fetchCustomers(),
-      fetchGps(),
-    ])
+    try {
+      await Promise.all([
+        fetchDashboard(),
+        fetchBranches(),
+        fetchFleet(),
+        fetchCustomers(),
+        fetchGps(),
+      ])
+    } catch (_) { /* safety */ }
+    // Bookings: pakai dummy data dari design spec
+    bookings.value = DUMMY_BOOKINGS
     loading.value = false
   }
 

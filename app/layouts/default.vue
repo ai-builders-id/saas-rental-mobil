@@ -28,5 +28,6 @@ const title = computed(() => {
       </main>
     </div>
     <MobileNav />
+    <GlobalSearch />
   </div>
 </template>

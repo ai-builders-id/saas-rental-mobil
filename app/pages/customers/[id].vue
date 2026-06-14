@@ -5,7 +5,7 @@ const route = useRoute()
 const { customers } = useRentalData()
 
 const id = computed(() => String(route.params.id))
-const customer = computed(() => customers.find((c) => c.id === id.value))
+const customer = computed(() => customers.value.find((c) => c.id === id.value))
 
 const email = computed(() =>
   customer.value

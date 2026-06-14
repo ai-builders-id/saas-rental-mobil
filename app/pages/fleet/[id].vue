@@ -4,8 +4,8 @@ import { rupiah } from '~/utils/format'
 const route = useRoute()
 const { vehicles, branches } = useRentalData()
 
-const vehicle = computed(() => vehicles.find((v) => v.id === route.params.id))
-const branchName = (id: string) => branches.find((b) => b.id === id)?.name ?? id
+const vehicle = computed(() => vehicles.value.find((v) => v.id === route.params.id))
+const branchName = (id: string) => branches.value.find((b) => b.id === id)?.name ?? id
 
 // Fabricated demo data (swap for API when backend is wired up).
 const history = [
